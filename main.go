@@ -1,12 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"time"
 )
-
-const files = 5
 
 func main() {
 	names := make(chan string)
@@ -18,10 +15,9 @@ func main() {
 	go decrypt(ciphertext, cleartext)
 	go upload(cleartext, done)
 
-	for i := 0; i < files; i++ {
-		file := fmt.Sprintf("file%03d.txt", i)
-		log.Printf("main: Processing %s", file)
-		names <- file
+	for _, f := range []string{"file1", "file2", "file3", "file4", "file5"} {
+		log.Printf("main: Processing %s", f)
+		names <- f
 	}
 
 	close(names)
@@ -33,7 +29,7 @@ func download(names <-chan string, ciphertext chan<- string) {
 	for s := range names {
 		log.Printf("download: Received %s", s)
 		time.Sleep(3 * time.Second)
-		ciphertext <- "lengthy ciphertextryped text from " + s
+		ciphertext <- "lengthy ciphertext from " + s
 		log.Printf("download: Completed %s", s)
 	}
 }
@@ -43,7 +39,7 @@ func decrypt(ciphertext <-chan string, cleartext chan<- string) {
 	for s := range ciphertext {
 		log.Printf("decrypt: Received %s", s)
 		time.Sleep(1 * time.Second)
-		cleartext <- "lenghty clear text of " + s
+		cleartext <- "lenghty cleartext of " + s
 		log.Printf("decrypt: Completed %s", s)
 
 	}
