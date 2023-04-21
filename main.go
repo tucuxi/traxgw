@@ -6,6 +6,11 @@ import (
 	"time"
 )
 
+type job struct {
+	name string
+	data string
+}
+
 func main() {
 	done := make(chan bool)
 	defer close(done)
@@ -15,8 +20,8 @@ func main() {
 	}
 }
 
-func list(done <-chan bool) <-chan string {
-	names := make(chan string)
+func list(done <-chan bool) <-chan job {
+	names := make(chan job)
 	go func() {
 		defer close(names)
 		for _, f := range []string{"file1", "file2", "file3", "file4", "file5"} {
@@ -24,61 +29,61 @@ func list(done <-chan bool) <-chan string {
 			select {
 			case <-done:
 				return
-			case names <- f:
+			case names <- job{name: f}:
 			}
 		}
 	}()
 	return names
 }
 
-func download(done <-chan bool, names <-chan string) <-chan string {
-	ciphertext := make(chan string)
+func download(done <-chan bool, names <-chan job) <-chan job {
+	ciphertext := make(chan job)
 	go func() {
 		defer close(ciphertext)
-		for s := range names {
-			log.Printf("download: Received %s", s)
+		for j := range names {
+			log.Printf("download: Received job %s", j.name)
 			time.Sleep(3 * time.Second)
 			select {
 			case <-done:
 				return
-			case ciphertext <- "lengthy ciphertext from " + s:
+			case ciphertext <- job{j.name, "lengthy ciphertext"}:
 			}
-			log.Printf("download: Completed %s", s)
+			log.Printf("download: Completed %s", j.name)
 		}
 	}()
 	return ciphertext
 }
 
-func decrypt(done <-chan bool, ciphertext <-chan string) <-chan string {
-	plaintext := make(chan string)
+func decrypt(done <-chan bool, ciphertext <-chan job) <-chan job {
+	plaintext := make(chan job)
 	go func() {
 		defer close(plaintext)
-		for s := range ciphertext {
-			log.Printf("decrypt: Received %s", s)
+		for j := range ciphertext {
+			log.Printf("decrypt: Received %s", j.name)
 			time.Sleep(1 * time.Second)
 			select {
 			case <-done:
 				return
-			case plaintext <- "lenghty cleartext of " + s:
+			case plaintext <- job{j.name, "lenghty cleartext"}:
 			}
-			log.Printf("decrypt: Completed %s", s)
+			log.Printf("decrypt: Completed %s", j.name)
 		}
 	}()
 	return plaintext
 }
 
-func upload(done <-chan bool, cleartext <-chan string) <-chan string {
-	result := make(chan string)
+func upload(done <-chan bool, cleartext <-chan job) <-chan job {
+	result := make(chan job)
 	go func() {
 		defer close(result)
-		for s := range cleartext {
-			log.Printf("upload: Received %s", s)
+		for j := range cleartext {
+			log.Printf("upload: Received %s", j.name)
 			time.Sleep(3 * time.Second)
-			log.Printf("upload: Completed %s", s)
+			log.Printf("upload: Completed %s", j.name)
 			select {
 			case <-done:
 				return
-			case result <- s:
+			case result <- job{j.name, "OK"}:
 			}
 		}
 	}()
