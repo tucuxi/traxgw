@@ -11,7 +11,7 @@ type job struct {
 }
 
 func main() {
-	done := make(chan bool)
+	done := make(chan any)
 	defer close(done)
 	pipeline := remove(done, upload(done, decrypt(done, download(done, list(done)))))
 	for v := range pipeline {
@@ -19,7 +19,7 @@ func main() {
 	}
 }
 
-func list(done <-chan bool) <-chan job {
+func list(done <-chan any) <-chan job {
 	output := make(chan job)
 	go func() {
 		defer close(output)
@@ -35,7 +35,7 @@ func list(done <-chan bool) <-chan job {
 	return output
 }
 
-func download(done <-chan bool, input <-chan job) <-chan job {
+func download(done <-chan any, input <-chan job) <-chan job {
 	output := make(chan job)
 	go func() {
 		defer close(output)
@@ -53,7 +53,7 @@ func download(done <-chan bool, input <-chan job) <-chan job {
 	return output
 }
 
-func decrypt(done <-chan bool, ciphertext <-chan job) <-chan job {
+func decrypt(done <-chan any, ciphertext <-chan job) <-chan job {
 	plaintext := make(chan job)
 	go func() {
 		defer close(plaintext)
@@ -70,7 +70,7 @@ func decrypt(done <-chan bool, ciphertext <-chan job) <-chan job {
 	return plaintext
 }
 
-func upload(done <-chan bool, input <-chan job) <-chan job {
+func upload(done <-chan any, input <-chan job) <-chan job {
 	output := make(chan job)
 	go func() {
 		defer close(output)
@@ -87,7 +87,7 @@ func upload(done <-chan bool, input <-chan job) <-chan job {
 	return output
 }
 
-func remove(done <-chan bool, input <-chan job) <-chan job {
+func remove(done <-chan any, input <-chan job) <-chan job {
 	output := make(chan job)
 	go func() {
 		defer close(output)
