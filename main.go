@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"time"
 )
@@ -14,9 +13,9 @@ type job struct {
 func main() {
 	done := make(chan bool)
 	defer close(done)
-	pipeline := upload(done, decrypt(done, download(done, list(done))))
+	pipeline := remove(done, upload(done, decrypt(done, download(done, list(done)))))
 	for v := range pipeline {
-		fmt.Println("main: Completed", v)
+		log.Printf("main: %s processed with result %s", v.name, v.data)
 	}
 }
 
@@ -24,8 +23,8 @@ func list(done <-chan bool) <-chan job {
 	names := make(chan job)
 	go func() {
 		defer close(names)
+		log.Println("ftp: DIR")
 		for _, f := range []string{"file1", "file2", "file3", "file4", "file5"} {
-			log.Printf("list: Found %s", f)
 			select {
 			case <-done:
 				return
@@ -41,15 +40,15 @@ func download(done <-chan bool, names <-chan job) <-chan job {
 	go func() {
 		defer close(ciphertext)
 		for j := range names {
-			log.Printf("download: Received job %s", j.name)
+			log.Printf("ftp: GET %s", j.name)
 			time.Sleep(3 * time.Second)
 			select {
 			case <-done:
 				return
 			case ciphertext <- job{j.name, "lengthy ciphertext"}:
 			}
-			log.Printf("download: Completed %s", j.name)
 		}
+		log.Printf("download complete")
 	}()
 	return ciphertext
 }
@@ -59,33 +58,47 @@ func decrypt(done <-chan bool, ciphertext <-chan job) <-chan job {
 	go func() {
 		defer close(plaintext)
 		for j := range ciphertext {
-			log.Printf("decrypt: Received %s", j.name)
+			log.Printf("decrypt: %s", j.name)
 			time.Sleep(1 * time.Second)
 			select {
 			case <-done:
 				return
 			case plaintext <- job{j.name, "lenghty cleartext"}:
 			}
-			log.Printf("decrypt: Completed %s", j.name)
 		}
 	}()
 	return plaintext
 }
 
 func upload(done <-chan bool, cleartext <-chan job) <-chan job {
-	result := make(chan job)
+	output := make(chan job)
 	go func() {
-		defer close(result)
+		defer close(output)
 		for j := range cleartext {
-			log.Printf("upload: Received %s", j.name)
+			log.Printf("s3: PUT %s", j.name)
 			time.Sleep(3 * time.Second)
-			log.Printf("upload: Completed %s", j.name)
 			select {
 			case <-done:
 				return
-			case result <- job{j.name, "OK"}:
+			case output <- job{j.name, ""}:
 			}
 		}
 	}()
-	return result
+	return output
+}
+
+func remove(done <-chan bool, names <-chan job) <-chan job {
+	output := make(chan job)
+	go func() {
+		defer close(output)
+		for j := range names {
+			log.Printf("ftp: RM %s", j.name)
+			select {
+			case <-done:
+				return
+			case output <- job{j.name, "OK"}:
+			}
+		}
+	}()
+	return output
 }
