@@ -20,37 +20,37 @@ func main() {
 }
 
 func list(done <-chan bool) <-chan job {
-	names := make(chan job)
+	output := make(chan job)
 	go func() {
-		defer close(names)
+		defer close(output)
 		log.Println("ftp: DIR")
 		for _, f := range []string{"file1", "file2", "file3", "file4", "file5"} {
 			select {
 			case <-done:
 				return
-			case names <- job{name: f}:
+			case output <- job{name: f}:
 			}
 		}
 	}()
-	return names
+	return output
 }
 
-func download(done <-chan bool, names <-chan job) <-chan job {
-	ciphertext := make(chan job)
+func download(done <-chan bool, input <-chan job) <-chan job {
+	output := make(chan job)
 	go func() {
-		defer close(ciphertext)
-		for j := range names {
+		defer close(output)
+		for j := range input {
 			log.Printf("ftp: GET %s", j.name)
 			time.Sleep(3 * time.Second)
 			select {
 			case <-done:
 				return
-			case ciphertext <- job{j.name, "lengthy ciphertext"}:
+			case output <- job{j.name, "lengthy ciphertext"}:
 			}
 		}
 		log.Printf("download complete")
 	}()
-	return ciphertext
+	return output
 }
 
 func decrypt(done <-chan bool, ciphertext <-chan job) <-chan job {
@@ -70,11 +70,11 @@ func decrypt(done <-chan bool, ciphertext <-chan job) <-chan job {
 	return plaintext
 }
 
-func upload(done <-chan bool, cleartext <-chan job) <-chan job {
+func upload(done <-chan bool, input <-chan job) <-chan job {
 	output := make(chan job)
 	go func() {
 		defer close(output)
-		for j := range cleartext {
+		for j := range input {
 			log.Printf("s3: PUT %s", j.name)
 			time.Sleep(3 * time.Second)
 			select {
@@ -87,11 +87,11 @@ func upload(done <-chan bool, cleartext <-chan job) <-chan job {
 	return output
 }
 
-func remove(done <-chan bool, names <-chan job) <-chan job {
+func remove(done <-chan bool, input <-chan job) <-chan job {
 	output := make(chan job)
 	go func() {
 		defer close(output)
-		for j := range names {
+		for j := range input {
 			log.Printf("ftp: RM %s", j.name)
 			select {
 			case <-done:
