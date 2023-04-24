@@ -71,7 +71,7 @@ func download(done <-chan any, input <-chan job) <-chan job {
 			case output <- j:
 			}
 		}
-		log.Print("download stage complete")
+		log.Print("download: stage complete")
 	}()
 	return output
 }
